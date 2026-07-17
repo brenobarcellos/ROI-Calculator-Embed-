@@ -28,9 +28,28 @@ export default function CrmSimulator({ currentLang }: CrmSimulatorProps) {
         if (data.length > 0 && !selectedLead) {
           setSelectedLead(data[data.length - 1]); // default select newest
         }
+      } else {
+        const local = localStorage.getItem('odilo_captured_leads');
+        if (local) {
+          const parsed = JSON.parse(local);
+          setLeads(parsed);
+          if (parsed.length > 0 && !selectedLead) {
+            setSelectedLead(parsed[parsed.length - 1]);
+          }
+        }
       }
     } catch (err) {
       console.error(err);
+      const local = localStorage.getItem('odilo_captured_leads');
+      if (local) {
+        try {
+          const parsed = JSON.parse(local);
+          setLeads(parsed);
+          if (parsed.length > 0 && !selectedLead) {
+            setSelectedLead(parsed[parsed.length - 1]);
+          }
+        } catch (_) {}
+      }
     } finally {
       setIsLoading(false);
     }
@@ -52,9 +71,12 @@ export default function CrmSimulator({ currentLang }: CrmSimulatorProps) {
   const handleClearLeads = async () => {
     if (confirm(currentLang === 'en' ? 'Are you sure you want to clear lead history?' : '¿Está seguro de borrar el historial?')) {
       try {
+        localStorage.removeItem('odilo_captured_leads');
+      } catch (e) {}
+      setLeads([]);
+      setSelectedLead(null);
+      try {
         await fetch('/api/leads', { method: 'DELETE' });
-        setLeads([]);
-        setSelectedLead(null);
       } catch (err) {
         console.error(err);
       }
@@ -166,6 +188,24 @@ export default function CrmSimulator({ currentLang }: CrmSimulatorProps) {
 
     const resultsData = calculateAll(inputsData);
 
+    const backupRecord: SavedLeadRecord = {
+      id: Math.random().toString(36).substring(2, 9),
+      lead: leadData,
+      inputs: inputsData,
+      results: resultsData,
+      scenario: 'expected',
+      date: new Date().toISOString()
+    };
+
+    try {
+      const existing = localStorage.getItem('odilo_captured_leads');
+      const list = existing ? JSON.parse(existing) : [];
+      list.push(backupRecord);
+      localStorage.setItem('odilo_captured_leads', JSON.stringify(list));
+    } catch (e) {
+      console.warn(e);
+    }
+
     try {
       const response = await fetch('/api/leads', {
         method: 'POST',
@@ -180,12 +220,20 @@ export default function CrmSimulator({ currentLang }: CrmSimulatorProps) {
 
       if (response.ok) {
         const newLead = await response.json();
-        setLeads(prev => [...prev, newLead]);
+        setLeads(prev => {
+          const filtered = prev.filter(l => l.id !== backupRecord.id);
+          return [...filtered, newLead];
+        });
         setSelectedLead(newLead);
+        return;
       }
     } catch (err) {
       console.error("Error generating demo lead:", err);
     }
+
+    // Fallback if the backend endpoint is not available (e.g. on Netlify or GitHub Pages)
+    setLeads(prev => [...prev, backupRecord]);
+    setSelectedLead(backupRecord);
   };
 
   const payloadStr = selectedLead 

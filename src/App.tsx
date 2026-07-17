@@ -44,6 +44,24 @@ export default function App() {
     setIsSubmittingLead(true);
     setLead(leadData);
 
+    // Save locally to localStorage as backup for static hosting platforms (like Netlify or GitHub Pages)
+    try {
+      const record = {
+        id: Math.random().toString(36).substring(2, 9),
+        lead: leadData,
+        inputs,
+        results,
+        scenario: 'expected',
+        date: new Date().toISOString()
+      };
+      const existing = localStorage.getItem('odilo_captured_leads');
+      const list = existing ? JSON.parse(existing) : [];
+      list.push(record);
+      localStorage.setItem('odilo_captured_leads', JSON.stringify(list));
+    } catch (e) {
+      console.warn('LocalStorage backup failed:', e);
+    }
+
     try {
       // Sync to backend persistent log
       await fetch('/api/leads', {
