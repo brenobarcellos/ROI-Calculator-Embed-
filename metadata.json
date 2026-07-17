@@ -1,0 +1,8 @@
+{
+  "name": "Remix: ODILO ROI Calculator",
+  "description": "An interactive, McKinsey-grade sales enablement and lead generation tool to quantify Higher Education leaks and project business value.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
